@@ -19,6 +19,7 @@ class ProviderStore @Inject constructor(@ApplicationContext ctx: Context) {
       val default = ProviderProfile(
         id = "default_gateway", builtinId = "aiope_gateway",
         label = "AIOPE Gateway", apiKey = "REDACTED_KEY",
+        apiBase = "https://inf.xnet.ngo/v1",
         selectedModelId = "llama/qwen3.5-2b-heretic", isActive = true,
         modelConfigs = mapOf("llama/qwen3.5-2b-heretic" to ModelConfig(
           modelId = "llama/qwen3.5-2b-heretic", toolsOverride = true, visionOverride = true,
