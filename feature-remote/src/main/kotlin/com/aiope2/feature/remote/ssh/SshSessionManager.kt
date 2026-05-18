@@ -6,7 +6,7 @@ import kotlinx.coroutines.withContext
 import net.schmizz.sshj.SSHClient
 import net.schmizz.sshj.common.IOUtils
 import net.schmizz.sshj.xfer.FileSystemFile
-import java.security.Security
+import java.security.Security // kept for potential future use
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -20,11 +20,11 @@ class SshSessionManager @Inject constructor() {
   companion object {
     init {
       try {
-        // Add BC at end (don't remove system provider — Android 10 needs it for BKS keystore)
-        if (Security.getProvider("BC") == null) {
-          Security.addProvider(org.bouncycastle.jce.provider.BouncyCastleProvider())
-        }
-        net.schmizz.sshj.common.SecurityUtils.setSecurityProvider("BC")
+        // Do NOT register BouncyCastle as a global JCA provider.
+        // It registers "BKS" keystore type which R8 strips the SPI class for,
+        // causing "BKS not found" when Android's TLS stack tries to use it.
+        // SSHJ works fine with the system "BC" provider on Android 16+.
+        net.schmizz.sshj.common.SecurityUtils.setSecurityProvider(null)
       } catch (_: Exception) {}
     }
   }

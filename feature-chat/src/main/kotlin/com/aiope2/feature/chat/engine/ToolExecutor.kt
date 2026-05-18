@@ -32,10 +32,10 @@ class ToolExecutor(
   var locationUsedThisTurn = false
   private var cachedDataCategories: String? = null
   var shellOutputLimit = 4000
-  var fetchLimit = 12000
+  var fetchLimit = 30000
   var fileReadLimit = 50000
 
-  private val httpClient = okhttp3.OkHttpClient.Builder()
+  private val httpClient = com.aiope2.feature.chat.engine.SafeOkHttp.builder()
     .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
     .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
     .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
@@ -180,7 +180,7 @@ class ToolExecutor(
 
       "search_location" -> executeSearchLocation(args["query"]?.toString() ?: "")
 
-      "search_web" -> execute("query_data", mapOf("category" to "search_web", "extra" to (args["query"]?.toString() ?: "")))
+      "search_web" -> executeSearchWeb(args["query"]?.toString() ?: "")
 
       "search_images" -> execute("query_data", mapOf("category" to "image_search", "extra" to (args["query"]?.toString() ?: "")))
 
@@ -535,6 +535,32 @@ class ToolExecutor(
   } catch (e: Exception) {
     "Error: ${e.message}"
   }
+
+  private suspend fun executeSearchWeb(query: String): String = try {
+    if (query.isBlank()) return "Error: query required"
+    val url = "https://html.duckduckgo.com/html/?q=${java.net.URLEncoder.encode(query, "UTF-8")}"
+    val req = okhttp3.Request.Builder().url(url)
+      .header("User-Agent", "Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36")
+      .build()
+    val html = httpClient.newCall(req).execute().use { it.body?.string() ?: "" }
+    val results = Regex("""<a rel="nofollow" class="result__a" href="[^"]*uddg=([^&"]+)[^"]*">(.+?)</a>""")
+      .findAll(html).take(8).mapIndexed { i, m ->
+        val link = java.net.URLDecoder.decode(m.groupValues[1], "UTF-8")
+        val title = m.groupValues[2].replace(Regex("<[^>]+>"), "").replace("&amp;", "&").replace("&#x27;", "'")
+        "${i+1}. [$title]($link)"
+      }.joinToString("\n")
+    // Also grab snippets
+    val snippets = Regex("""<a class="result__snippet"[^>]*>(.+?)</a>""")
+      .findAll(html).take(8).map { it.groupValues[1].replace(Regex("<[^>]+>"), "").replace("&amp;", "&").trim() }.toList()
+    val combined = Regex("""<a rel="nofollow" class="result__a" href="[^"]*uddg=([^&"]+)[^"]*">(.+?)</a>""")
+      .findAll(html).take(8).mapIndexed { i, m ->
+        val link = java.net.URLDecoder.decode(m.groupValues[1], "UTF-8")
+        val title = m.groupValues[2].replace(Regex("<[^>]+>"), "").replace("&amp;", "&").replace("&#x27;", "'")
+        val snippet = snippets.getOrElse(i) { "" }
+        "${i+1}. [$title]($link)\n   $snippet"
+      }.joinToString("\n\n")
+    combined.ifBlank { "No results found for: $query" }
+  } catch (e: Exception) { "Error: ${e.message}" }
 
   private suspend fun executeQueryData(args: Map<String, Any?>): String = try {
     val cat = args["category"]?.toString() ?: ""

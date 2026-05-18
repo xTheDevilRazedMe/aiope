@@ -14,6 +14,7 @@ import com.aiope2.feature.chat.db.MessageEntity
 import com.aiope2.feature.chat.engine.StreamingOrchestrator
 import com.aiope2.feature.chat.engine.RealtimeAudioManager
 import com.aiope2.feature.chat.engine.RealtimeStreaming
+import com.aiope2.feature.chat.engine.SafeOkHttp
 import com.aiope2.feature.chat.engine.AudioConfig
 import com.aiope2.feature.chat.engine.StreamEvent
 import com.aiope2.feature.chat.engine.TokenCounter
@@ -54,18 +55,23 @@ class ChatViewModel @Inject constructor(
   private var streamingJob: kotlinx.coroutines.Job? = null
 
   // Realtime voice state
-  var isInRealtimeVoice = false; private set
-  var isVoiceListening = false; private set
-  var isVoiceSpeaking = false; private set
+  private val _isInRealtimeVoice = MutableStateFlow(false)
+  val isInRealtimeVoice = _isInRealtimeVoice.asStateFlow()
+  private val _isVoiceListening = MutableStateFlow(false)
+  val isVoiceListening = _isVoiceListening.asStateFlow()
+  private val _isVoiceSpeaking = MutableStateFlow(false)
+  val isVoiceSpeaking = _isVoiceSpeaking.asStateFlow()
 
   /** Whether the selected model supports realtime voice */
-  val supportsRealtimeVoice: Boolean
-    get() {
-      val profile = providerStore.getActive()
-      val model = getSelectedModelDef(profile)
-      return model?.supportsAudio == true && model.useStreaming
-    }
+  private val _supportsRealtimeVoice = MutableStateFlow(false)
+  val supportsRealtimeVoice = _supportsRealtimeVoice.asStateFlow()
+  private fun updateSupportsRealtimeVoice() {
+    val profile = providerStore.getActive()
+    val model = getSelectedModelDef(profile)
+    _supportsRealtimeVoice.value = model?.supportsAudio == true && model.useStreaming
+  }
   private var realtimeAudioManager: RealtimeAudioManager? = null
+  private val okHttp = SafeOkHttp.builder().readTimeout(0, java.util.concurrent.TimeUnit.MILLISECONDS).build()
   private var realtimeStreamingJob: kotlinx.coroutines.Job? = null
   private var realtimeWebSocket: okhttp3.WebSocket? = null
 
@@ -77,7 +83,7 @@ class ChatViewModel @Inject constructor(
 
   /** Toggle realtime voice mode */
   fun toggleRealtimeVoice() {
-    if (isInRealtimeVoice) {
+    if (_isInRealtimeVoice.value) {
       stopRealtimeVoice()
     } else {
       startRealtimeVoice()
@@ -98,11 +104,11 @@ class ChatViewModel @Inject constructor(
       return
     }
 
-    isInRealtimeVoice = true
-    isVoiceListening = true
+    _isInRealtimeVoice.value = true
+    _isVoiceListening.value = true
 
     // Initialize audio manager
-    realtimeAudioManager = RealtimeAudioManager(application).apply {
+    realtimeAudioManager = RealtimeAudioManager(getApplication<Application>()).apply {
       start(
         audioConfig = AudioConfig(
           sampleRate = modelDef.sampleRate,
@@ -129,11 +135,11 @@ class ChatViewModel @Inject constructor(
             }
             is StreamEvent.AudioChunk -> {
               realtimeAudioManager?.playAudio(event.pcmData)
-              isVoiceSpeaking = true
+              _isVoiceSpeaking.value = true
             }
             is StreamEvent.TurnComplete -> {
-              isVoiceSpeaking = false
-              isVoiceListening = true
+              _isVoiceSpeaking.value = false
+              _isVoiceListening.value = true
             }
             is StreamEvent.Connected -> {
               // Audio session active
@@ -154,9 +160,9 @@ class ChatViewModel @Inject constructor(
 
   /** Stop realtime voice conversation */
   private fun stopRealtimeVoice() {
-    isInRealtimeVoice = false
-    isVoiceListening = false
-    isVoiceSpeaking = false
+    _isInRealtimeVoice.value = false
+    _isVoiceListening.value = false
+    _isVoiceSpeaking.value = false
 
     realtimeStreamingJob?.cancel()
     realtimeStreamingJob = null
@@ -735,7 +741,6 @@ class ChatViewModel @Inject constructor(
           toolResultsList.add(r.result.take(2000))
           if (r.result.startsWith("Error:") || r.result.startsWith("FAILED")) toolErrorsList.add("${r.name}: ${r.result.take(200)}")
         }
-        sb.clear()
       }
       chunk.error?.let { sb.append("\nError: $it") }
       if (chunk.isDone && isReasoning && currentReasoning.isNotEmpty()) {

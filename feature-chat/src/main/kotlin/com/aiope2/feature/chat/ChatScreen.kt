@@ -8,6 +8,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -38,7 +40,7 @@ fun ChatScreen(viewModel: ChatViewModel = hiltViewModel(), onOpenSettings: () ->
   val isInRealtimeVoice by viewModel.isInRealtimeVoice.collectAsStateWithLifecycle()
   val isVoiceListening by viewModel.isVoiceListening.collectAsStateWithLifecycle()
   val isVoiceSpeaking by viewModel.isVoiceSpeaking.collectAsStateWithLifecycle()
-  val supportsRealtimeVoice by viewModel.supportsRealtimeVoice
+  val supportsRealtimeVoice by viewModel.supportsRealtimeVoice.collectAsStateWithLifecycle()
   val terminalVisible by viewModel.terminalVisible.collectAsStateWithLifecycle()
   val modelLabel by viewModel._modelLabel.collectAsStateWithLifecycle()
   val browserVisible by viewModel.browserVisible.collectAsStateWithLifecycle()
@@ -84,6 +86,7 @@ fun ChatScreen(viewModel: ChatViewModel = hiltViewModel(), onOpenSettings: () ->
           onFork = { idx -> viewModel.fork(idx) },
           onTranslate = { msgId, lang -> viewModel.translateMessage(msgId, lang) },
           editText = editText, onEditTextChange = { editText = it },
+          supportsRealtimeVoice = supportsRealtimeVoice, isInRealtimeVoice = isInRealtimeVoice, isVoiceListening = isVoiceListening, isVoiceSpeaking = isVoiceSpeaking, onToggleVoice = { viewModel.toggleRealtimeVoice() },
           modifier = Modifier.weight(1f),
         )
         if (terminalVisible) {
@@ -126,6 +129,7 @@ fun ChatScreen(viewModel: ChatViewModel = hiltViewModel(), onOpenSettings: () ->
           onFork = { idx -> viewModel.fork(idx) },
           onTranslate = { msgId, lang -> viewModel.translateMessage(msgId, lang) },
           editText = editText, onEditTextChange = { editText = it },
+          supportsRealtimeVoice = supportsRealtimeVoice, isInRealtimeVoice = isInRealtimeVoice, isVoiceListening = isVoiceListening, isVoiceSpeaking = isVoiceSpeaking, onToggleVoice = { viewModel.toggleRealtimeVoice() },
           modifier = Modifier.weight(1f),
         )
         if (terminalVisible) {
@@ -179,6 +183,11 @@ private fun ChatContent(
   onTranslate: (String, String) -> Unit = { _, _ -> },
   editText: String = "",
   onEditTextChange: (String) -> Unit = {},
+  supportsRealtimeVoice: Boolean = false,
+  isInRealtimeVoice: Boolean = false,
+  isVoiceListening: Boolean = false,
+  isVoiceSpeaking: Boolean = false,
+  onToggleVoice: () -> Unit = {},
   modifier: Modifier = Modifier,
 ) {
   var showModelPicker by remember { mutableStateOf(false) }
@@ -339,7 +348,7 @@ private fun ChatContent(
 
       // ── Input ──
       Surface(color = MaterialTheme.colorScheme.surface) {
-        ChatInput(onSend = onSend, onStop = onStop, isStreaming = isStreaming, editText = editText, onEditTextChange = onEditTextChange, autoRun = autoRun, onAutoRunChange = onAutoRunChange)
+        ChatInput(onSend = onSend, onStop = onStop, isStreaming = isStreaming, editText = editText, onEditTextChange = onEditTextChange, autoRun = autoRun, onAutoRunChange = onAutoRunChange, supportsRealtimeVoice = supportsRealtimeVoice, isInRealtimeVoice = isInRealtimeVoice, isVoiceListening = isVoiceListening, isVoiceSpeaking = isVoiceSpeaking, onToggleVoice = onToggleVoice)
       }
     }
   }
@@ -461,7 +470,7 @@ private fun MessageList(
 // ── Input bar ──
 
 @Composable
-private fun ChatInput(onSend: (String, List<String>) -> Unit, onStop: () -> Unit = {}, isStreaming: Boolean, editText: String = "", onEditTextChange: (String) -> Unit = {}, autoRun: Boolean = false, onAutoRunChange: (Boolean) -> Unit = {}) {
+private fun ChatInput(onSend: (String, List<String>) -> Unit, onStop: () -> Unit = {}, isStreaming: Boolean, editText: String = "", onEditTextChange: (String) -> Unit = {}, autoRun: Boolean = false, onAutoRunChange: (Boolean) -> Unit = {}, supportsRealtimeVoice: Boolean = false, isInRealtimeVoice: Boolean = false, isVoiceListening: Boolean = false, isVoiceSpeaking: Boolean = false, onToggleVoice: () -> Unit = {}) {
   var text by remember { mutableStateOf("") }
   val pendingImages = remember { mutableStateListOf<String>() }
 
@@ -586,7 +595,7 @@ private fun ChatInput(onSend: (String, List<String>) -> Unit, onStop: () -> Unit
       // Realtime voice button (for audio-capable models)
       if (supportsRealtimeVoice) {
         IconButton(
-          onClick = { viewModel.toggleRealtimeVoice() }
+          onClick = { onToggleVoice() }
         ) {
           Icon(
             imageVector = if (isInRealtimeVoice) Icons.Default.MicOff else Icons.Default.Mic,

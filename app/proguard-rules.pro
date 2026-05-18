@@ -49,6 +49,13 @@
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
 
+# OkHttp platform detection uses reflection to find these
+-keep class org.conscrypt.Conscrypt { *; }
+-keep class org.conscrypt.ConscryptHostnameVerifier { *; }
+-keep class org.bouncycastle.jsse.** { *; }
+-keep class org.bouncycastle.jce.provider.BouncyCastleProvider { *; }
+-keep class org.openjsse.** { *; }
+
 # Dagger
 -dontwarn com.google.errorprone.annotations.*
 

@@ -29,7 +29,7 @@ class StreamingOrchestrator(
   data class ToolDef(val name: String, val description: String, val parameters: JSONObject)
 
   companion object {
-    private val client = OkHttpClient.Builder()
+    private val client = SafeOkHttp.builder()
       .connectTimeout(15, TimeUnit.SECONDS)
       .readTimeout(5, TimeUnit.MINUTES) // reduced from 10m — detect dead connections faster
       .writeTimeout(30, TimeUnit.SECONDS)
@@ -121,6 +121,7 @@ class StreamingOrchestrator(
       var hasToolCalls = false
       var inThinkTag = false
       var thinkTagName = "think"
+      val pendingTagBuf = StringBuilder()
       var sseError: String? = null
       var sseDone = false
 
@@ -182,27 +183,76 @@ class StreamingOrchestrator(
                   delta.optString("reasoning", "").let { if (it == "null") "" else it }
                 }
 
-                // Handle <think>/<thought> tags
-                if (!inThinkTag) {
-                  if (content.contains("<think>")) {
-                    inThinkTag = true
-                    thinkTagName = "think"
-                    content = content.substringAfter("<think>")
-                  } else if (content.contains("<thought>")) {
-                    inThinkTag = true
-                    thinkTagName = "thought"
-                    content = content.substringAfter("<thought>")
-                  }
-                }
-                if (inThinkTag) {
-                  val closeTag = "</$thinkTagName>"
-                  if (content.contains(closeTag)) {
-                    reasoning = content.substringBefore(closeTag)
-                    content = content.substringAfter(closeTag)
-                    inThinkTag = false
+                // Handle <think>/<thought>/<thinking> tags (may be split across chunks)
+                if (content.isNotEmpty()) {
+                  pendingTagBuf.append(content)
+                  content = ""
+                  // Process buffer
+                  val buf = pendingTagBuf.toString()
+                  if (!inThinkTag) {
+                    val openTag = listOf("<thinking>", "<think>", "<thought>").firstOrNull { buf.contains(it) }
+                    if (openTag != null) {
+                      inThinkTag = true
+                      thinkTagName = openTag.removePrefix("<").removeSuffix(">")
+                      content = buf.substringBefore(openTag)
+                      val afterOpen = buf.substringAfter(openTag)
+                      pendingTagBuf.clear()
+                      pendingTagBuf.append(afterOpen)
+                      // Check if close tag is also in this buffer
+                      val closeTag = "</$thinkTagName>"
+                      val buf2 = pendingTagBuf.toString()
+                      if (buf2.contains(closeTag)) {
+                        reasoning = buf2.substringBefore(closeTag)
+                        val afterClose = buf2.substringAfter(closeTag)
+                        pendingTagBuf.clear()
+                        content += afterClose
+                        inThinkTag = false
+                      } else {
+                        // Emit reasoning up to any trailing partial tag
+                        val lastLt = buf2.lastIndexOf('<')
+                        if (lastLt >= 0 && lastLt > buf2.length - 13) {
+                          reasoning = buf2.substring(0, lastLt)
+                          pendingTagBuf.clear()
+                          pendingTagBuf.append(buf2.substring(lastLt))
+                        } else {
+                          reasoning = buf2
+                          pendingTagBuf.clear()
+                        }
+                      }
+                    } else if (buf.endsWith("<") || (buf.length < 12 && buf.contains("<"))) {
+                      // Might be partial open tag, keep buffering
+                    } else {
+                      // No tag, flush as content
+                      val lastLt = buf.lastIndexOf('<')
+                      if (lastLt >= 0 && lastLt > buf.length - 12) {
+                        content = buf.substring(0, lastLt)
+                        pendingTagBuf.clear()
+                        pendingTagBuf.append(buf.substring(lastLt))
+                      } else {
+                        content = buf
+                        pendingTagBuf.clear()
+                      }
+                    }
                   } else {
-                    reasoning = content
-                    content = ""
+                    // In think tag — look for close tag
+                    val closeTag = "</$thinkTagName>"
+                    if (buf.contains(closeTag)) {
+                      reasoning = buf.substringBefore(closeTag)
+                      content = buf.substringAfter(closeTag)
+                      pendingTagBuf.clear()
+                      inThinkTag = false
+                    } else {
+                      // Emit reasoning but hold back potential partial close tag
+                      val lastLt = buf.lastIndexOf('<')
+                      if (lastLt >= 0 && lastLt > buf.length - 13) {
+                        reasoning = buf.substring(0, lastLt)
+                        pendingTagBuf.clear()
+                        pendingTagBuf.append(buf.substring(lastLt))
+                      } else {
+                        reasoning = buf
+                        pendingTagBuf.clear()
+                      }
+                    }
                   }
                 }
 
@@ -231,7 +281,6 @@ class StreamingOrchestrator(
 
                 if (finishReason == "tool_calls" || (finishReason == "stop" && toolAcc.isNotEmpty())) {
                   hasToolCalls = toolAcc.isNotEmpty()
-                  latch.countDown()
                 }
               } catch (e: Exception) {
                 android.util.Log.e("AIOPE2", "SSE parse: ${e.message} data=${data.take(100)}")
@@ -283,7 +332,7 @@ class StreamingOrchestrator(
       }
 
       // Execute tool calls
-      if (hasToolCalls && toolAcc.isNotEmpty()) {
+      if (toolAcc.isNotEmpty()) {
         val callInfos = toolAcc.map { (_, acc) ->
           val argsStr = acc["args"] ?: "{}"
           val args = try {
@@ -347,6 +396,36 @@ class StreamingOrchestrator(
         continue
       }
 
+      // Fallback: parse text-based tool calls (for models that don't use structured tool_calls)
+      if (tools.isNotEmpty()) {
+        val text = contentSoFar.toString()
+        val parsed = parseTextToolCalls(text)
+        if (parsed.isNotEmpty()) {
+          val callInfos = parsed.map { (name, args) ->
+            ToolCallInfo(id = "call_${System.nanoTime()}", name = name, arguments = args)
+          }
+          send(ChatStreamChunk(toolCalls = callInfos))
+          val results = callInfos.map { call ->
+            val result = try { onToolCall(call.name, call.arguments) } catch (e: Exception) { "Error: ${e.message}" }
+            ToolResultInfo(id = call.id, name = call.name, arguments = call.arguments, result = result)
+          }
+          send(ChatStreamChunk(toolResults = results))
+          rawMessages.add(JSONObject().apply {
+            put("role", "assistant")
+            put("content", text)
+          })
+          for (r in results) {
+            rawMessages.add(JSONObject().apply {
+              put("role", "tool")
+              put("tool_call_id", r.id)
+              put("content", r.result.take(16000))
+            })
+          }
+          contentSoFar.clear()
+          continue
+        }
+      }
+
       // Done
       send(ChatStreamChunk(isDone = true))
       close()
@@ -364,6 +443,7 @@ class StreamingOrchestrator(
     body.put("model", model)
     body.put("stream", true)
     body.put("messages", JSONArray().apply { for (m in messages) put(m) })
+    android.util.Log.e("AIOPE2", "Request: model=$model tools=${tools.size} msgs=${messages.size}")
     if (tools.isNotEmpty()) {
       body.put(
         "tools",
@@ -373,5 +453,43 @@ class StreamingOrchestrator(
       )
     }
     return body.toString()
+  }
+
+  /** Parse text-based tool calls from models that don't use structured tool_calls.
+   *  Supports: <tool_call>{"name":"x","arguments":{...}}</tool_call> (Qwen/Hermes format)
+   */
+  private fun parseTextToolCalls(text: String): List<Pair<String, Map<String, Any?>>> {
+    val results = mutableListOf<Pair<String, Map<String, Any?>>>()
+    val toolNames = tools.map { it.name }.toSet()
+
+    // Pattern 1: <tool_call>...</tool_call>
+    val tagRegex = Regex("""<tool_call>\s*(\{.*?\})\s*</tool_call>""", RegexOption.DOT_MATCHES_ALL)
+    for (m in tagRegex.findAll(text)) {
+      try {
+        val j = JSONObject(m.groupValues[1])
+        val name = j.optString("name", "")
+        if (name in toolNames) {
+          val argsObj = j.optJSONObject("arguments") ?: j.optJSONObject("parameters") ?: JSONObject()
+          val args = argsObj.keys().asSequence().associateWith { k -> argsObj.opt(k) }
+          results.add(name to args)
+        }
+      } catch (_: Exception) {}
+    }
+    if (results.isNotEmpty()) return results
+
+    // Pattern 2: ```json blocks with name+arguments
+    val codeRegex = Regex("""```(?:json)?\s*(\{.*?\})\s*```""", RegexOption.DOT_MATCHES_ALL)
+    for (m in codeRegex.findAll(text)) {
+      try {
+        val j = JSONObject(m.groupValues[1])
+        val name = j.optString("name", "")
+        if (name in toolNames) {
+          val argsObj = j.optJSONObject("arguments") ?: j.optJSONObject("parameters") ?: JSONObject()
+          val args = argsObj.keys().asSequence().associateWith { k -> argsObj.opt(k) }
+          results.add(name to args)
+        }
+      } catch (_: Exception) {}
+    }
+    return results
   }
 }

@@ -24,7 +24,7 @@ data class ModelConfig(
   val systemPromptOverride: String? = null,
   // Truncation limits
   val shellOutputLimit: Int = 4000,
-  val fetchLimit: Int = 12000,
+  val fetchLimit: Int = 30000,
   val fileReadLimit: Int = 50000,
 ) {
   fun toJson() = JSONObject().apply {
@@ -43,7 +43,7 @@ data class ModelConfig(
     put("autoCompact", autoCompact)
     systemPromptOverride?.let { put("systemPromptOverride", it) }
     if (shellOutputLimit != 4000) put("shellOutputLimit", shellOutputLimit)
-    if (fetchLimit != 12000) put("fetchLimit", fetchLimit)
+    if (fetchLimit != 30000) put("fetchLimit", fetchLimit)
     if (fileReadLimit != 50000) put("fileReadLimit", fileReadLimit)
   }
   companion object {
@@ -70,7 +70,7 @@ data class ModelConfig(
         null
       },
       shellOutputLimit = j.optInt("shellOutputLimit", 4000),
-      fetchLimit = j.optInt("fetchLimit", 12000),
+      fetchLimit = j.optInt("fetchLimit", 30000),
       fileReadLimit = j.optInt("fileReadLimit", 50000),
     )
   }
@@ -161,8 +161,6 @@ data class BuiltinProvider(
   val defaultModels: List<ModelDef> = emptyList(),
 )
 
-object ProviderTemplates {
-  val ALL = listOf(
 object ProviderTemplates {
   val ALL = listOf(
     BuiltinProvider(

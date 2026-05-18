@@ -38,12 +38,12 @@ class ProviderStore @Inject constructor(
         taskStore.setTaskConfig(task, com.aiope2.core.network.TaskModelConfig(task.id, gw.id, model))
       }
     }
-    seed(com.aiope2.core.network.ModelTask.SUMMARY, "google-ai-studio/models-gemma-3-27b-it")
-    seed(com.aiope2.core.network.ModelTask.TITLE, "google-ai-studio/models-gemma-3-1b-it")
-    seed(com.aiope2.core.network.ModelTask.TRANSLATION, "google-ai-studio/models-gemma-3-12b-it")
-    seed(com.aiope2.core.network.ModelTask.IMAGE_RECOGNITION, "google-ai-studio/models-gemma-3-27b-it")
+    seed(com.aiope2.core.network.ModelTask.SUMMARY, "pollinations-pollen/llama-scout")
+    seed(com.aiope2.core.network.ModelTask.TITLE, "pollinations-pollen/nova-fast")
+    seed(com.aiope2.core.network.ModelTask.TRANSLATION, "pollinations-pollen/nova-fast")
+    seed(com.aiope2.core.network.ModelTask.IMAGE_RECOGNITION, "google-ai-studio/models-gemma-4-26b-a4b-it")
     seed(com.aiope2.core.network.ModelTask.SUBAGENT, "google-ai-studio/models-gemma-4-26b-a4b-it")
-    seed(com.aiope2.core.network.ModelTask.IMAGE_GENERATION, "pollinations-pollen/klein")
+    seed(com.aiope2.core.network.ModelTask.IMAGE_GENERATION, "pollinations-pollen/flux")
   }
 
   private fun seedDefault() {
@@ -64,12 +64,12 @@ class ProviderStore @Inject constructor(
         mc("cline/z-ai-glm-5", tools = true, vision = false, audio = false, video = false, ctx = 200_000),
         mc("google-ai-studio/models-gemma-4-31b-it", tools = true, vision = true, ctx = 256_000),
         mc("google-ai-studio/models-gemma-4-26b-a4b-it", tools = true, vision = true, ctx = 256_000),
-        mc("google-ai-studio/models-gemma-3-27b-it", tools = false, vision = true, audio = false, video = false, ctx = 128_000),
-        mc("google-ai-studio/models-gemma-3-12b-it", tools = false, vision = true, audio = false, video = false, ctx = 128_000, reasoning = null),
-        mc("google-ai-studio/models-gemma-3-4b-it", tools = false, vision = true, audio = false, video = false, ctx = 128_000, reasoning = null),
-        mc("google-ai-studio/models-gemma-3-1b-it", tools = false, vision = false, audio = false, video = false, ctx = 32_000, reasoning = null),
-        mc("google-ai-studio/models-gemma-3n-e2b-it", tools = false, vision = true, audio = false, video = false, ctx = 128_000),
-        mc("google-ai-studio/models-gemma-3n-e4b-it", tools = false, vision = true, audio = false, video = false, ctx = 128_000),
+        mc("pollinations-pollen/llama-scout", tools = true, vision = false, audio = false, video = false, ctx = 327_680),
+        mc("pollinations-pollen/nova-fast", tools = true, vision = false, audio = false, video = false, ctx = 128_000, reasoning = null),
+        mc("pollinations-pollen/flux", tools = false, vision = false, audio = false, video = false, ctx = 0, reasoning = null, compact = false),
+        mc("pollinations-pollen/deepseek", tools = true, vision = false, audio = false, video = false, ctx = 1_000_000),
+        mc("pollinations-pollen/mistral", tools = true, vision = false, audio = false, video = false, ctx = 128_000, reasoning = null),
+        mc("pollinations-pollen/qwen-coder", tools = true, vision = false, audio = false, video = false, ctx = 262_144),
         mc("openrouter/openrouter-free", vision = true, ctx = 128_000),
         mc("pollinations/openai", tools = true, vision = false, audio = false, video = false, ctx = 128_000, compact = false),
         mc("pollinations/openai-fast", tools = true, vision = false, audio = false, video = false, ctx = 128_000),
@@ -182,7 +182,7 @@ class ProviderStore @Inject constructor(
       try {
         val base = profile.effectiveApiBase().trimEnd('/')
         val url = if (base.endsWith("/v1")) "$base/models" else "$base/v1/models"
-        val client = okhttp3.OkHttpClient.Builder().connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS).readTimeout(10, java.util.concurrent.TimeUnit.SECONDS).build()
+        val client = com.aiope2.feature.chat.engine.SafeOkHttp.builder().connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS).readTimeout(10, java.util.concurrent.TimeUnit.SECONDS).build()
         val req = okhttp3.Request.Builder().url(url).addHeader("Authorization", "Bearer ${profile.apiKey}").build()
         val body = client.newCall(req).execute().use { it.body?.string() ?: "" }
         val data = JSONObject(body).optJSONArray("data") ?: return@Thread
