@@ -31,6 +31,7 @@ dependencies {
   implementation("androidx.recyclerview:recyclerview:1.4.0")
   implementation(libs.androidx.appcompat)
   implementation("io.coil-kt:coil-compose:2.6.0")
+  implementation("io.coil-kt:coil-svg:2.6.0")
   implementation("ru.noties:jlatexmath-android:0.2.0")
   implementation("ru.noties:jlatexmath-android-font-cyrillic:0.2.0")
   implementation("ru.noties:jlatexmath-android-font-greek:0.2.0")
