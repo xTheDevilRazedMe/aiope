@@ -53,6 +53,7 @@ class StreamingOrchestrator(
         lower.contains("stream was reset") ||
         lower.contains("unexpected end of stream") ||
         lower.contains("broken pipe") ||
+        lower.contains("socket closed") ||
         lower.contains("connection abort") ||
         lower.contains("connection shutdown") ||
         lower.contains("failed to connect") ||
@@ -304,8 +305,14 @@ class StreamingOrchestrator(
           },
         )
 
-        latch.await(180, java.util.concurrent.TimeUnit.SECONDS)
+        val latchOk = latch.await(180, java.util.concurrent.TimeUnit.SECONDS)
         eventSource.cancel()
+
+        // Latch timed out — treat as transient failure
+        if (!latchOk && !sseDone) {
+          sseError = "Stream timeout (180s)"
+          android.util.Log.e("AIOPE2", "SSE latch timeout (attempt ${retries + 1})")
+        }
 
         // Success — no error or already done
         if (sseError == null || sseDone) break

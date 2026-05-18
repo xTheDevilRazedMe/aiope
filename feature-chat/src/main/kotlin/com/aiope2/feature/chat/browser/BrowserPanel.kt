@@ -58,7 +58,7 @@ fun BrowserPanel(maximized: Boolean = false, onToggleMaximize: () -> Unit = {}, 
   val scope = rememberCoroutineScope()
 
   LaunchedEffect(Unit) {
-    if (browser.currentUrl() == "about:blank") browser.navigate("https://www.google.com")
+    if (browser.currentUrl() == "about:blank") browser.navigate("https://xnet.ngo")
     while (true) {
       delay(200)
       val cur = browser.currentUrl()

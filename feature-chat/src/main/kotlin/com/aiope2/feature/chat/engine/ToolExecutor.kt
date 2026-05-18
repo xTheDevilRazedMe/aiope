@@ -182,7 +182,7 @@ class ToolExecutor(
 
       "search_web" -> executeSearchWeb(args["query"]?.toString() ?: "")
 
-      "search_images" -> execute("query_data", mapOf("category" to "image_search", "extra" to (args["query"]?.toString() ?: "")))
+      "search_images" -> executeSearchImages(args["query"]?.toString() ?: "")
 
       "fetch_url" -> executeFetchUrl(args)
 
@@ -536,30 +536,38 @@ class ToolExecutor(
     "Error: ${e.message}"
   }
 
-  private suspend fun executeSearchWeb(query: String): String = try {
+  private suspend fun searxQuery(query: String, categories: String = ""): String {
     if (query.isBlank()) return "Error: query required"
-    val url = "https://html.duckduckgo.com/html/?q=${java.net.URLEncoder.encode(query, "UTF-8")}"
-    val req = okhttp3.Request.Builder().url(url)
-      .header("User-Agent", "Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36")
+    val u = "https://search.xnet.ngo/search?q=${java.net.URLEncoder.encode(query, "UTF-8")}&format=json" +
+      if (categories.isNotBlank()) "&categories=${java.net.URLEncoder.encode(categories, "UTF-8")}" else ""
+    val req = okhttp3.Request.Builder().url(u)
+      .header("Accept", "application/json")
+      .header("Accept-Encoding", "identity")
+      .header("User-Agent", "aiope2/1.0")
       .build()
-    val html = httpClient.newCall(req).execute().use { it.body?.string() ?: "" }
-    val results = Regex("""<a rel="nofollow" class="result__a" href="[^"]*uddg=([^&"]+)[^"]*">(.+?)</a>""")
-      .findAll(html).take(8).mapIndexed { i, m ->
-        val link = java.net.URLDecoder.decode(m.groupValues[1], "UTF-8")
-        val title = m.groupValues[2].replace(Regex("<[^>]+>"), "").replace("&amp;", "&").replace("&#x27;", "'")
-        "${i+1}. [$title]($link)"
-      }.joinToString("\n")
-    // Also grab snippets
-    val snippets = Regex("""<a class="result__snippet"[^>]*>(.+?)</a>""")
-      .findAll(html).take(8).map { it.groupValues[1].replace(Regex("<[^>]+>"), "").replace("&amp;", "&").trim() }.toList()
-    val combined = Regex("""<a rel="nofollow" class="result__a" href="[^"]*uddg=([^&"]+)[^"]*">(.+?)</a>""")
-      .findAll(html).take(8).mapIndexed { i, m ->
-        val link = java.net.URLDecoder.decode(m.groupValues[1], "UTF-8")
-        val title = m.groupValues[2].replace(Regex("<[^>]+>"), "").replace("&amp;", "&").replace("&#x27;", "'")
-        val snippet = snippets.getOrElse(i) { "" }
-        "${i+1}. [$title]($link)\n   $snippet"
-      }.joinToString("\n\n")
-    combined.ifBlank { "No results found for: $query" }
+    val body = httpClient.newCall(req).execute().use { if (it.isSuccessful) it.body?.string() ?: "" else throw Exception("HTTP ${it.code}") }
+    val json = org.json.JSONObject(body)
+    val results = json.optJSONArray("results") ?: return "No results found."
+    val limit = if (categories == "images") 20 else 10
+    val sb = StringBuilder()
+    for (i in 0 until minOf(results.length(), limit)) {
+      val r = results.getJSONObject(i)
+      if (categories == "images") {
+        val img = r.optString("img_src", "").ifBlank { r.optString("thumbnail_src", "") }
+        if (img.isNotBlank()) sb.append("- ${r.optString("title")}\n  $img\n  ${r.optString("url")}\n")
+      } else {
+        sb.append("- ${r.optString("title")}\n  ${r.optString("url")}\n  ${r.optString("content")}\n")
+      }
+    }
+    return sb.toString().ifBlank { "No results found." }
+  }
+
+  private suspend fun executeSearchWeb(query: String): String = try {
+    searxQuery(query)
+  } catch (e: Exception) { "Error: ${e.message}" }
+
+  private suspend fun executeSearchImages(query: String): String = try {
+    searxQuery(query, "images")
   } catch (e: Exception) { "Error: ${e.message}" }
 
   private suspend fun executeQueryData(args: Map<String, Any?>): String = try {
@@ -578,7 +586,8 @@ class ToolExecutor(
     }
     val p = providerStore.getActive()
     val gwBase = p.effectiveApiBase().trimEnd('/').removeSuffix("/chat/completions").removeSuffix("/v1")
-    val req = okhttp3.Request.Builder().url("$gwBase/v1/data?q=$cat&lat=$lat&lon=$lon&extra=$extra")
+    val enc = java.net.URLEncoder.encode(extra, "UTF-8")
+    val req = okhttp3.Request.Builder().url("$gwBase/v1/data?q=$cat&lat=$lat&lon=$lon&extra=$enc")
       .apply { if (p.apiKey.isNotBlank()) addHeader("Authorization", "Bearer ${p.apiKey}") }.build()
     val resp = httpClient.newCall(req).execute()
     val body = resp.use { if (it.isSuccessful) it.body?.string() ?: "" else "Error: HTTP ${it.code}" }
