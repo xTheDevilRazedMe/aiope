@@ -70,7 +70,7 @@ class ToolExecutor(
     td("memory_recall", "Search your persistent memory for stored facts. Call with empty query to list all memories.", """{"type":"object","properties":{"query":{"type":"string","description":"Search term, or empty to list all"}},"required":["query"]}"""),
     td("memory_forget", "Delete a specific memory by its key.", """{"type":"object","properties":{"key":{"type":"string","description":"Key of the memory to delete"}},"required":["key"]}"""),
     td("image_generate", "Generate an image from a text prompt. Use when the user asks you to draw, create, generate, or make an image/picture/illustration.", """{"type":"object","properties":{"prompt":{"type":"string","description":"Detailed image generation prompt"}},"required":["prompt"]}"""),
-    td("analyze_image", "Analyze an image from a URL using vision. Use for browser screenshots, fetched images, or any image URL the user wants described.", """{"type":"object","properties":{"url":{"type":"string","description":"URL of the image to analyze"},"question":{"type":"string","description":"What to look for or ask about the image"}},"required":["url"]}"""),
+    td("analyze_image", "Analyze an image from a URL or local file path using vision. Supports JPEG, PNG, WebP, GIF, BMP, SVG. Use for browser screenshots, fetched images, generated images, or any image the user wants described.", """{"type":"object","properties":{"url":{"type":"string","description":"URL or file:// path of the image to analyze"},"question":{"type":"string","description":"What to look for or ask about the image"}},"required":["url"]}"""),
     td("read_calendar", "Read upcoming calendar events from the device.", """{"type":"object","properties":{"days":{"type":"integer","description":"Number of days ahead to look (default 7)"}},"required":[]}"""),
     td("create_event", "Create a calendar event. Opens the calendar app with pre-filled details.", """{"type":"object","properties":{"title":{"type":"string"},"start_time":{"type":"string","description":"Start time, e.g. '2025-04-20T14:00' or '2:00 PM'"},"end_time":{"type":"string","description":"End time"},"location":{"type":"string"},"description":{"type":"string"}},"required":["title"]}"""),
     td("delete_event", "Delete a calendar event by its ID (from read_calendar).", """{"type":"object","properties":{"event_id":{"type":"integer","description":"Event ID from read_calendar"}},"required":["event_id"]}"""),
@@ -641,13 +641,59 @@ class ToolExecutor(
     val question = args["question"]?.toString() ?: "Describe this image in detail."
     return try {
       val (profile, modelId) = resolveTaskModel(ModelTask.IMAGE_RECOGNITION)
-      val b64 = android.util.Base64.encodeToString(java.net.URL(url).readBytes(), android.util.Base64.NO_WRAP)
+      val imgData = if (url.startsWith("file://")) {
+        java.io.File(url.removePrefix("file://")).readBytes()
+      } else {
+        java.net.URL(url).readBytes()
+      }
+      val normalized = normalizeForVision(imgData, url)
+      val b64 = android.util.Base64.encodeToString(normalized, android.util.Base64.NO_WRAP)
       val sb = StringBuilder()
       StreamingOrchestrator(baseUrl = profile.effectiveApiBase(), apiKey = profile.apiKey, model = modelId).stream(listOf("user" to question), listOf(b64)).collect { if (it.content.isNotEmpty()) sb.append(it.content) }
       "Image analysis complete.\nSource: $url\nResult: ${sb.toString().ifBlank { "No description returned." }}"
     } catch (e: Exception) {
       "Image analysis FAILED.\nError: ${e.message}"
     }
+  }
+
+  private fun normalizeForVision(data: ByteArray, url: String): ByteArray {
+    // SVG detection: starts with '<' or UTF-8 BOM, or .svg extension
+    val isSvg = url.lowercase().endsWith(".svg") ||
+      (data.isNotEmpty() && (data[0] == '<'.code.toByte() || (data.size > 3 && data[0] == 0xEF.toByte() && data[1] == 0xBB.toByte() && data[2] == 0xBF.toByte())))
+    if (isSvg) {
+      try {
+        val svg = com.caverock.androidsvg.SVG.getFromInputStream(data.inputStream())
+        val w = svg.documentWidth.takeIf { it > 0 } ?: 1024f
+        val h = svg.documentHeight.takeIf { it > 0 } ?: 1024f
+        val scale = 1024f / maxOf(w, h)
+        val bw = (w * scale).toInt()
+        val bh = (h * scale).toInt()
+        val bmp = android.graphics.Bitmap.createBitmap(bw, bh, android.graphics.Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(bmp)
+        canvas.drawColor(android.graphics.Color.WHITE)
+        svg.documentWidth = bw.toFloat()
+        svg.documentHeight = bh.toFloat()
+        svg.renderToCanvas(canvas)
+        return bitmapToJpeg(bmp)
+      } catch (e: Exception) {
+        android.util.Log.w("ToolExec", "SVG rasterize failed: ${e.message}")
+      }
+    }
+    // Decode any format Android supports (JPEG, PNG, WebP, GIF, BMP, HEIF)
+    val bmp = android.graphics.BitmapFactory.decodeByteArray(data, 0, data.size) ?: return data
+    val maxDim = 1024
+    val scale = if (bmp.width > maxDim || bmp.height > maxDim) maxDim.toFloat() / maxOf(bmp.width, bmp.height) else 1f
+    val scaled = if (scale < 1f) android.graphics.Bitmap.createScaledBitmap(bmp, (bmp.width * scale).toInt(), (bmp.height * scale).toInt(), true) else bmp
+    val result = bitmapToJpeg(scaled)
+    if (scaled != bmp) bmp.recycle()
+    return result
+  }
+
+  private fun bitmapToJpeg(bmp: android.graphics.Bitmap): ByteArray {
+    val out = java.io.ByteArrayOutputStream()
+    bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, out)
+    bmp.recycle()
+    return out.toByteArray()
   }
 
   private suspend fun executeSearchLocation(query: String): String {

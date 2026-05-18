@@ -40,6 +40,7 @@ dependencies {
 
   // maps
   implementation("org.ramani-maps:ramani-maplibre:0.10.0")
+  implementation("com.caverock:androidsvg-aar:1.4")
 
   // room
   implementation(libs.androidx.room.runtime)
