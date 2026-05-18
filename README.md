@@ -1,6 +1,10 @@
 
 <p align="center"><img src="logo.png" width="200" alt="AIOPE"></p>
 
+<p align="center"><img src="screenshots/hero.png" alt="AIOPE Landing" width="800"></p>
+
+<p align="center"><img src="screenshots/chat.png" alt="AIOPE Chat" width="800"></p>
+
 # AIOPE
 
 [![Android CI](https://github.com/XNet-NGO/AIOPE/actions/workflows/android.yml/badge.svg)](https://github.com/XNet-NGO/AIOPE/actions/workflows/android.yml)
