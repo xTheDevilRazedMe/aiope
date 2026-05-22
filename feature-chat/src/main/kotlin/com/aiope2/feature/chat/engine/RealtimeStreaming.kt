@@ -34,8 +34,7 @@ class RealtimeStreaming(
     private var webSocket: WebSocket? = null
 
     fun createStream(): Flow<StreamEvent> = callbackFlow {
-        val encodedPrompt = java.net.URLEncoder.encode(systemPrompt, "UTF-8")
-        val wsUrl = "$gatewayUrl?model=${modelDef.id}&system=$encodedPrompt"
+        val wsUrl = "$gatewayUrl?model=${modelDef.id}"
         val request = Request.Builder()
             .url(wsUrl)
             .addHeader("Authorization", "Bearer ${provider.apiKey}")
@@ -43,6 +42,13 @@ class RealtimeStreaming(
 
         webSocket = okHttp.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(ws: WebSocket, response: Response) {
+                // Send system prompt as first message
+                if (systemPrompt.isNotBlank()) {
+                    val setup = JSONObject().apply {
+                        put("setup", JSONObject().apply { put("systemPrompt", systemPrompt) })
+                    }
+                    ws.send(setup.toString())
+                }
                 trySend(StreamEvent.Connected)
                 // Start mic capture → sends audio over this WS
                 audioManager.setWebSocket(ws)

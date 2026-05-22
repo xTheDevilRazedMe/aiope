@@ -170,7 +170,7 @@ object ProviderTemplates {
       "https://inf.xnet.ngo/v1",
       apiKeyHint = "Gateway key",
       defaultModels = listOf(
-        ModelDef("llama/qwen3.5-2b-heretic", "Qwen 3.5 2B Heretic", 32_768),
+        ModelDef("google-ai-studio/models-gemma-4-31b-it", "Gemma 4 31B IT", 256_000),
         ModelDef(
           "cf-image/flux-1-schnell",
           "FLUX Schnell",

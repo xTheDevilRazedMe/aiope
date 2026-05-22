@@ -97,7 +97,7 @@ class ServerListViewModel @Inject constructor(
     try {
       deployUseCase.deploy(server)
     } catch (e: Exception) {
-      _deployError.value = "Deploy error: ${e.message}"
+      _deployError.value = "Deploy error: ${e.message ?: e.javaClass.simpleName}"
       serverDao.updateStatus(server.id, "error")
     } finally {
       _isDeploying.value = false

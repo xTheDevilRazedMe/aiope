@@ -39,7 +39,16 @@ class SshSessionManager @Inject constructor() {
     return key
   }
 
-  private fun loadKey(client: SSHClient, privateKey: String) = client.loadKeys(normalizeKey(privateKey), null, null)
+  private fun loadKey(client: SSHClient, privateKey: String): net.schmizz.sshj.userauth.keyprovider.KeyProvider {
+    val keyContent = normalizeKey(privateKey)
+    val tmp = java.io.File.createTempFile("sshkey", ".pem")
+    try {
+      tmp.writeText(keyContent)
+      return client.loadKeys(tmp.absolutePath, null as String?)
+    } finally {
+      tmp.delete()
+    }
+  }
 
   /** TOFU verifier: trusts first-seen host key, rejects changes */
   private fun addTofuVerifier(client: SSHClient, host: String, port: Int) {
@@ -82,7 +91,11 @@ class SshSessionManager @Inject constructor() {
   suspend fun connectWithKey(host: String, port: Int, user: String, privateKey: String): SSHClient = withContext(Dispatchers.IO) {
     val client = SSHClient()
     addTofuVerifier(client, host, port)
-    client.connect(host, port)
+    try {
+      client.connect(host, port)
+    } catch (e: Exception) {
+      throw IllegalStateException("Connect failed to $host:$port — ${e.message ?: e.javaClass.simpleName}")
+    }
     try {
       client.authPublickey(user, loadKey(client, privateKey))
     } catch (e: Exception) {
