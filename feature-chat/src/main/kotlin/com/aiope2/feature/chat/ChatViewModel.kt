@@ -138,6 +138,15 @@ class ChatViewModel @Inject constructor(
               viewModelScope.launch(Dispatchers.Main) { _isVoiceSpeaking.value = true }
             }
             is StreamEvent.TurnComplete -> {
+              // Persist the assistant message
+              if (voiceTurnId.isNotBlank()) {
+                val assistantMsg = _messages.value.lastOrNull { it.id == voiceTurnId }
+                if (assistantMsg != null && assistantMsg.content.isNotBlank()) {
+                  viewModelScope.launch(Dispatchers.IO) {
+                    chatDao.insertMessage(MessageEntity(id = assistantMsg.id, conversationId = conversationId, role = Role.ASSISTANT.value, content = assistantMsg.content))
+                  }
+                }
+              }
               currentTurnText.clear()
               voiceTurnId = ""
               realtimeAudioManager?.onTurnComplete()
@@ -148,8 +157,13 @@ class ChatViewModel @Inject constructor(
             }
             is StreamEvent.Connected -> {}
             is StreamEvent.InputTranscription -> {
+              val msgId = java.util.UUID.randomUUID().toString()
               viewModelScope.launch(Dispatchers.Main) {
-                _messages.value = _messages.value + ChatMessage(role = Role.USER, content = event.text)
+                _messages.value = _messages.value + ChatMessage(id = msgId, role = Role.USER, content = event.text)
+              }
+              // Persist user message
+              viewModelScope.launch(Dispatchers.IO) {
+                chatDao.insertMessage(MessageEntity(id = msgId, conversationId = conversationId, role = Role.USER.value, content = event.text))
               }
             }
             is StreamEvent.OutputTranscription -> {

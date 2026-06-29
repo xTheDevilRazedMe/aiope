@@ -20,7 +20,7 @@ android {
     targetSdk = Configurations.targetSdk
     versionCode = Configurations.versionCode
     versionName = Configurations.versionName
-    buildConfigField("String", "GATEWAY_KEY", "\"${project.findProperty("GATEWAY_KEY") ?: ""}\"")
+    buildConfigField("String", "GATEWAY_KEY", "\"${rootProject.file("secrets.properties").let { f -> if (f.exists()) Properties().apply { f.inputStream().use { load(it) } }.getProperty("GATEWAY_KEY", "") else "" }}\"")
   }
 
   buildFeatures { buildConfig = true }
