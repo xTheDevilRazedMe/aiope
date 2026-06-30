@@ -29,6 +29,7 @@ class RealtimeStreaming(
     private val provider: ProviderProfile,
     private val audioManager: RealtimeAudioManager,
     private val systemPrompt: String = "",
+    private val voiceName: String = "Aoede",
     private val gatewayUrl: String = "wss://inf.xnet.ngo/ws/voice"
 ) {
     private var webSocket: WebSocket? = null
@@ -45,7 +46,10 @@ class RealtimeStreaming(
                 // Send system prompt as first message
                 if (systemPrompt.isNotBlank()) {
                     val setup = JSONObject().apply {
-                        put("setup", JSONObject().apply { put("systemPrompt", systemPrompt) })
+                        put("setup", JSONObject().apply {
+                            put("systemPrompt", systemPrompt)
+                            put("voiceName", voiceName)
+                        })
                     }
                     ws.send(setup.toString())
                 }

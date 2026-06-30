@@ -109,6 +109,11 @@ class ChatViewModel @Inject constructor(
     val audioManager = getApplication<android.app.Application>().getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
     audioManager.mode = android.media.AudioManager.MODE_IN_COMMUNICATION
     audioManager.isSpeakerphoneOn = true
+    // Route to speaker on Android 12+
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+      val speaker = audioManager.availableCommunicationDevices.firstOrNull { it.type == android.media.AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
+      if (speaker != null) audioManager.setCommunicationDevice(speaker)
+    }
     audioManager.setStreamVolume(android.media.AudioManager.STREAM_VOICE_CALL, audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_VOICE_CALL), 0)
 
     realtimeStreamingJob = viewModelScope.launch(Dispatchers.IO) {
@@ -122,7 +127,8 @@ class ChatViewModel @Inject constructor(
           config = ModelConfig(modelId = modelDef.id),
           provider = profile,
           audioManager = realtimeAudioManager!!,
-          systemPrompt = sysPrompt
+          systemPrompt = sysPrompt,
+          voiceName = com.aiope2.feature.chat.settings.getVoiceName(getApplication())
         )
         this@ChatViewModel.realtimeStream = realtimeStream
 
@@ -227,6 +233,9 @@ class ChatViewModel @Inject constructor(
       val am = getApplication<android.app.Application>().getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
       am.mode = android.media.AudioManager.MODE_NORMAL
       am.isSpeakerphoneOn = false
+      if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+        am.clearCommunicationDevice()
+      }
     } catch (_: Exception) {}
   }
 

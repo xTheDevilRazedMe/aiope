@@ -28,6 +28,7 @@ class RealtimeAudioManager(
     private var webSocket: WebSocket? = null
     private var aec: AcousticEchoCanceler? = null
     private val playbackQueue = java.util.concurrent.LinkedBlockingQueue<ByteArray>()
+    private var sharedSessionId: Int = 0
 
     fun setWebSocket(ws: WebSocket) { webSocket = ws }
 
@@ -49,10 +50,24 @@ class RealtimeAudioManager(
             audioRecord?.release(); audioRecord = null; return
         }
 
+        // Share session ID with AudioTrack for proper AEC pairing
+        sharedSessionId = audioRecord!!.audioSessionId
+
         // Enable AEC
         if (AcousticEchoCanceler.isAvailable()) {
-            aec = AcousticEchoCanceler.create(audioRecord!!.audioSessionId)
+            aec = AcousticEchoCanceler.create(sharedSessionId)
             aec?.enabled = true
+        }
+
+        // Rebuild AudioTrack with shared session ID for proper AEC pairing
+        if (audioTrack != null && audioTrack?.audioSessionId != sharedSessionId) {
+            playbackJob?.cancel()
+            playbackJob = null
+            audioTrack?.stop()
+            audioTrack?.release()
+            audioTrack = null
+            playbackQueue.clear()
+            startPlayback()
         }
 
         audioRecord?.startRecording()
@@ -75,12 +90,12 @@ class RealtimeAudioManager(
         audioRecord?.stop(); audioRecord?.release(); audioRecord = null
     }
 
-    /** Start playback track (call once, then feed with playAudio) */
+    /** Start playback track. If called before startCapture, will be re-initialized with shared session when capture starts. */
     fun startPlayback(outputRate: Int = 24000) {
         val bufSize = AudioTrack.getMinBufferSize(
             outputRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT
         )
-        audioTrack = AudioTrack.Builder()
+        val builder = AudioTrack.Builder()
             .setAudioAttributes(AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
@@ -90,7 +105,8 @@ class RealtimeAudioManager(
                 .setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
             .setBufferSizeInBytes(bufSize * 4)
             .setTransferMode(AudioTrack.MODE_STREAM)
-            .build()
+        if (sharedSessionId != 0) builder.setSessionId(sharedSessionId)
+        audioTrack = builder.build()
         audioTrack?.play()
 
         // Dedicated playback thread to avoid garbling

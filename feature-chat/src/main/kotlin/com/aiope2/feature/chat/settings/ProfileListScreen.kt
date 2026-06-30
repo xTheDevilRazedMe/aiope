@@ -40,6 +40,7 @@ internal fun ProfileList(
   onTools: () -> Unit,
   onMcp: () -> Unit,
   onServers: () -> Unit = {},
+  onVoice: () -> Unit = {},
   onTheme: () -> Unit = {},
   onProviders: () -> Unit = {},
   onBack: () -> Unit,
@@ -83,6 +84,12 @@ internal fun ProfileList(
           headlineContent = { Text("Remote Servers") },
           supportingContent = { Text("Deploy and manage SSH dev servers controlled by AIOPE", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) },
           modifier = Modifier.clickable { onServers() },
+        )
+        HorizontalDivider()
+        ListItem(
+          headlineContent = { Text("Voice") },
+          supportingContent = { Text("Voice selection, speech settings for live calls", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+          modifier = Modifier.clickable { onVoice() },
         )
         HorizontalDivider()
         ListItem(
