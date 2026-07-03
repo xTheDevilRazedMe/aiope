@@ -7,9 +7,6 @@ on:
         description: 'Release tag (e.g. v3.3.0)'
         required: false
         default: ''
-  push:
-    branches:
-      - main
 
 jobs:
   build:
@@ -42,61 +39,27 @@ jobs:
       - name: Create secrets.properties
         run: echo "GATEWAY_KEY=${{ secrets.GATEWAY_KEY }}" > secrets.properties
 
-      - name: Create keystore.properties (if keystore secrets present)
+      - name: Create keystore.properties
         run: |
-          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ] && [ -n "${{ secrets.KEYSTORE_PASSWORD }}" ] && [ -n "${{ secrets.KEY_ALIAS }}" ] && [ -n "${{ secrets.KEY_PASSWORD }}" ]; then
-            echo "Decoding keystore..."
-            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > xnet.keystore
-            cat > keystore.properties <<EOF
-storeFile=xnet.keystore
-storePassword=${{ secrets.KEYSTORE_PASSWORD }}
-keyAlias=${{ secrets.KEY_ALIAS }}
-keyPassword=${{ secrets.KEY_PASSWORD }}
-EOF
-            echo "KEYSTORE_CREATED=true" >> "$GITHUB_ENV"
-          else
-            echo "No keystore secrets found; build will produce an unsigned/debug APK" >&2
-            echo "KEYSTORE_CREATED=false" >> "$GITHUB_ENV"
-          fi
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > xnet.keystore
+          cat > keystore.properties << EOF
+          storeFile=xnet.keystore
+          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          EOF
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build APK (release if keystore present, otherwise debug)
-        run: |
-          if [ "${KEYSTORE_CREATED}" = "true" ]; then
-            echo "Building signed release APK"
-            ./gradlew :app:assembleRelease -x spotlessCheck -x spotlessKotlinCheck --no-daemon --stacktrace
-          else
-            echo "Building debug APK"
-            ./gradlew :app:assembleDebug -x spotlessCheck -x spotlessKotlinCheck --no-daemon --stacktrace
-          fi
+      - name: Build release APK
+        run: ./gradlew :app:assembleRelease -x spotlessCheck -x spotlessKotlinCheck
 
-      - name: Determine APK version name
+      - name: Rename APK
         run: |
-          if [ -n "${{ github.event.inputs.version }}" ]; then
-            echo "VERSION=${{ github.event.inputs.version }}" >> "$GITHUB_ENV"
-          elif [ -n "$GITHUB_REF_NAME" ]; then
-            echo "VERSION=$GITHUB_REF_NAME" >> "$GITHUB_ENV"
-          else
-            SHORT_SHA=$(echo "$GITHUB_SHA" | cut -c1-7)
-            echo "VERSION=dev-${SHORT_SHA}" >> "$GITHUB_ENV"
-          fi
-
-      - name: Rename/copy APK to workspace root
-        run: |
-          set -euo pipefail
-          VERSION=${VERSION}
-          echo "Using VERSION=$VERSION"
-          APK_PATH=$(find app/build/outputs/apk -type f -name "*.apk" ! -name "*-unaligned.apk" | head -n 1 || true)
-          if [ -z "$APK_PATH" ]; then
-            echo "No APK found in build outputs" >&2
-            exit 1
-          fi
-          echo "Found APK: $APK_PATH"
-          TARGET="AIOPE-${VERSION}-release.apk"
-          cp "$APK_PATH" "$TARGET"
-          echo "APK copied to $TARGET"
+          VERSION="${{ github.event.inputs.version || github.ref_name }}"
+          APK=$(find app/build/outputs/apk/release -name "*.apk" | head -1)
+          cp "$APK" "AIOPE-${VERSION}-release.apk"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
