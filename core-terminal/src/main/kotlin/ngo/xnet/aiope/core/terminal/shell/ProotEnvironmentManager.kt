@@ -162,7 +162,7 @@ object ProotEnvironmentManager {
 
   /** Set the active environment */
   fun setActiveEnvironment(ctx: Context, envId: String) {
-    getPrefs(ctx).edit { putString(KEY_ACTIVE_ENV, envId) }
+    getPrefs(ctx).edit().putString(KEY_ACTIVE_ENV, envId).apply()
     Log.i(TAG, "Active environment set to: $envId")
   }
 
@@ -243,7 +243,7 @@ object ProotEnvironmentManager {
     
     // If we removed the active env, clear it
     if (getPrefs(ctx).getString(KEY_ACTIVE_ENV, "") == envId) {
-      getPrefs(ctx).edit { remove(KEY_ACTIVE_ENV) }
+      getPrefs(ctx).edit().remove(KEY_ACTIVE_ENV).apply()
     }
   }
 
@@ -369,7 +369,7 @@ object ProotEnvironmentManager {
   private fun saveEnvironments(ctx: Context, envs: List<ProotEnvironment>) {
     val arr = JSONArray()
     envs.forEach { arr.put(it.toJson()) }
-    getPrefs(ctx).edit { putString(KEY_ENVIRONMENTS, arr.toString()) }
+    getPrefs(ctx).edit().putString(KEY_ENVIRONMENTS, arr.toString()).apply()
   }
 
   private fun fromJsonOrNull(j: JSONObject): ProotEnvironment? = try {
