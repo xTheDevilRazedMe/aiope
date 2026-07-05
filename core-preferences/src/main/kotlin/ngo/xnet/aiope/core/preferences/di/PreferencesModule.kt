@@ -23,9 +23,9 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import ngo.xnet.aiope.core.preferences.Preferences
 import javax.inject.Singleton
 
-import ngo.xnet.aiope.core.preferences.Preferences
 
 @Module
 @InstallIn(SingletonComponent::class)
