@@ -34,6 +34,32 @@ jobs:
           chmod +x gradlew
           ./gradlew :app:assembleDebug -PGATEWAY_KEY="${{ secrets.GATEWAY_KEY }}"
 
+      - name: Calculate Next Version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          LATEST_TAG=$(gh release list --limit 1 | head -n 1 | awk '{print $1}')
+          if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" != *"debug"* ]; then
+            NEW_TAG="v4.0.0-debug"
+          else
+            VERSION=${LATEST_TAG#v}
+            VERSION=${VERSION%-debug}
+            IFS='.' read -r major minor patch <<< "$VERSION"
+            
+            patch=$((patch + 1))
+            if [ $patch -gt 9 ]; then
+              patch=0
+              minor=$((minor + 1))
+              if [ $minor -gt 9 ]; then
+                minor=0
+                major=$((major + 1))
+              fi
+            fi
+            NEW_TAG="v$major.$minor.$patch-debug"
+          fi
+          echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
+          echo "Next version will be $NEW_TAG"
+
       - name: Upload Debug APK to Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -43,7 +69,8 @@ jobs:
       - name: Upload APK to Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.0-debug
+          tag_name: ${{ env.NEW_TAG }}
+          prerelease: true
           files: app/build/outputs/apk/debug/app-debug.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
