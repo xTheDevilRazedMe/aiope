@@ -18,13 +18,14 @@ package ngo.xnet.aiope.core.preferences.di
 
 import android.content.Context
 import android.content.Context.MODE_PRIVATE
-import ngo.xnet.aiope.core.preferences.Preferences
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
+
+import ngo.xnet.aiope.core.preferences.Preferences
 
 @Module
 @InstallIn(SingletonComponent::class)
