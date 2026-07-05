@@ -26,7 +26,6 @@ import dagger.hilt.components.SingletonComponent
 import ngo.xnet.aiope.core.preferences.Preferences
 import javax.inject.Singleton
 
-
 @Module
 @InstallIn(SingletonComponent::class)
 internal object PreferencesModule {
