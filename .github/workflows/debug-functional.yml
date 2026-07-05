@@ -18,25 +18,22 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: '1.21'
 
-      - name: Build aiope-remote installer
+      - name: Build Go Daemon
         run: |
           cd daemon
-          go mod tidy
-          bash scripts/build-installer.sh dev
-          mkdir -p ../feature-remote/src/main/assets
-          cp dist/aiope-remote-installer.sh ../feature-remote/src/main/assets/
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+          go build -o aiope-remote main.go
+          mkdir -p ../app/src/main/assets
+          cp aiope-remote ../app/src/main/assets/
 
       - name: Build Debug APK
         run: |
-          ./gradlew :app:assembleDebug -PGATEWAY_KEY="${{ secrets.GATEWAY_KEY }}" -x spotlessCheck -x spotlessKotlinCheck
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug -PGATEWAY_KEY="${{ secrets.GATEWAY_KEY }}"
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: debug-functional-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: aiope-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
