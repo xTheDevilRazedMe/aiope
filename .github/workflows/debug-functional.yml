@@ -1,4 +1,4 @@
-name: Hybrid Debug Build
+name: Hybrid Debug Functional Build
 
 on:
   workflow_dispatch:
@@ -6,6 +6,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
     steps:
       - uses: actions/checkout@v4
 
@@ -18,16 +21,15 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: '1.22'
 
       - name: Build Go Daemon
         run: |
           cd daemon
-          go build -o aiope-remote main.go
-          mkdir -p ../app/src/main/assets
-          cp aiope-remote ../app/src/main/assets/
+          go build -o aiope-remote
+          cd ..
 
-      - name: Build Debug APK
+      - name: Assemble Debug APK
         run: |
           chmod +x gradlew
           ./gradlew :app:assembleDebug -PGATEWAY_KEY="${{ secrets.GATEWAY_KEY }}"
@@ -35,5 +37,5 @@ jobs:
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: aiope-debug
+          name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
