@@ -1,0 +1,456 @@
+# Instincts generated from https://github.com/xTheDevilRazedMe/aiope
+# Generated: 2026-07-06T00:09:44.416Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: aiope-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/xTheDevilRazedMe/aiope
+---
+
+# Aiope Commit Length
+
+## Action
+
+Write moderate-length commit messages (~68 characters)
+
+## Evidence
+
+- Average commit message length: 68 chars
+- Based on 37 commits
+
+---
+id: aiope-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/xTheDevilRazedMe/aiope
+---
+
+# Aiope Naming Files
+
+## Action
+
+Use PascalCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: PascalCase
+
+---
+id: aiope-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/xTheDevilRazedMe/aiope
+---
+
+# Aiope Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: aiope-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/xTheDevilRazedMe/aiope
+---
+
+# Aiope Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: aiope-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/xTheDevilRazedMe/aiope
+---
+
+# Aiope Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: aiope-workflow-feature-development
+trigger: "when implementing a new feature"
+confidence: 0.85
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/xTheDevilRazedMe/aiope
+---
+
+# Aiope Workflow Feature Development
+
+## Action
+
+Follow the feature-development workflow:
+1. Add feature implementation
+2. Add tests for feature
+3. Update documentation
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~7x per month
+- Files: **/*.test.*
+
+---
+id: aiope-workflow-dependency-update-with-dependabot
+trigger: "when doing dependency update with dependabot"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/xTheDevilRazedMe/aiope
+---
+
+# Aiope Workflow Dependency Update With Dependabot
+
+## Action
+
+Follow the dependency-update-with-dependabot workflow:
+1. Dependabot detects new dependency version.
+2. Dependabot creates a commit updating the relevant build file(s) or versions catalog.
+3. A merge commit is created to integrate the update.
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~8x per month
+- Files: app/build.gradle.kts, feature-chat/build.gradle.kts, gradle/libs.versions.toml
+
+---
+id: aiope-workflow-ci-workflow-update
+trigger: "when doing ci workflow update"
+confidence: 0.65
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/xTheDevilRazedMe/aiope
+---
+
+# Aiope Workflow Ci Workflow Update
+
+## Action
+
+Follow the ci-workflow-update workflow:
+1. Edit workflow YAML file(s) under .github/workflows/
+2. Commit changes with a message referencing CI or workflow update.
+3. Push to repository to trigger new workflow behavior.
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~3x per month
+- Files: .github/workflows/release.yml, .github/workflows/android.yml
+
+---
+id: aiope-workflow-spotless-import-order-fix
+trigger: "when doing spotless import order fix"
+confidence: 0.65
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/xTheDevilRazedMe/aiope
+---
+
+# Aiope Workflow Spotless Import Order Fix
+
+## Action
+
+Follow the spotless-import-order-fix workflow:
+1. Edit Kotlin file(s) to fix import order or formatting.
+2. Commit with a message referencing Spotless or import order.
+3. Push to repository to pass formatting checks.
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~3x per month
+- Files: core-preferences/src/main/kotlin/ngo/xnet/aiope/core/preferences/di/PreferencesModule.kt
+
+---
+id: aiope-instinct-file-naming
+trigger: "When creating a new Kotlin file"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: xTheDevilRazedMe/aiope
+---
+
+# Aiope Instinct File Naming
+
+## Action
+
+Name the file using PascalCase
+
+## Evidence
+
+- Pattern in namingConventions.files: PascalCase
+- Seen in files like RootDetector.kt, EnhancedPermissionHelper.kt
+
+---
+id: aiope-instinct-function-naming
+trigger: "When defining a new function in Kotlin"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: xTheDevilRazedMe/aiope
+---
+
+# Aiope Instinct Function Naming
+
+## Action
+
+Name the function using camelCase
+
+## Evidence
+
+- Pattern in namingConventions.functions: camelCase
+
+---
+id: aiope-instinct-class-naming
+trigger: "When declaring a new class in Kotlin"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: xTheDevilRazedMe/aiope
+---
+
+# Aiope Instinct Class Naming
+
+## Action
+
+Name the class using PascalCase
+
+## Evidence
+
+- Pattern in namingConventions.classes: PascalCase
+
+---
+id: aiope-instinct-constant-naming
+trigger: "When declaring a constant in Kotlin"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: xTheDevilRazedMe/aiope
+---
+
+# Aiope Instinct Constant Naming
+
+## Action
+
+Name the constant using SCREAMING_SNAKE_CASE
+
+## Evidence
+
+- Pattern in namingConventions.constants: SCREAMING_SNAKE_CASE
+
+---
+id: aiope-instinct-import-style
+trigger: "When importing modules in Kotlin"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: xTheDevilRazedMe/aiope
+---
+
+# Aiope Instinct Import Style
+
+## Action
+
+Use relative imports
+
+## Evidence
+
+- Pattern in importStyle: relative
+
+---
+id: aiope-instinct-export-style
+trigger: "When exporting from a Kotlin file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: xTheDevilRazedMe/aiope
+---
+
+# Aiope Instinct Export Style
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- Pattern in exportStyle: named
+
+---
+id: aiope-instinct-spotless-import-order
+trigger: "When Spotless or code style checks fail due to import order or formatting issues"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: xTheDevilRazedMe/aiope
+---
+
+# Aiope Instinct Spotless Import Order
+
+## Action
+
+Fix import order and formatting in Kotlin files to comply with Spotless
+
+## Evidence
+
+- Workflow: spotless-import-order-fix
+- Commit referencing Spotless or import order
+
+---
+id: aiope-instinct-test-location
+trigger: "When adding tests for a feature or module"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: xTheDevilRazedMe/aiope
+---
+
+# Aiope Instinct Test Location
+
+## Action
+
+Place test files in separate test directories
+
+## Evidence
+
+- Architecture: testLocation is 'separate'
+- Pattern in feature-development workflow
+
+---
+id: aiope-instinct-feature-test-pattern
+trigger: "When implementing a new feature"
+confidence: 0.85
+domain: testing
+source: repo-analysis
+source_repo: xTheDevilRazedMe/aiope
+---
+
+# Aiope Instinct Feature Test Pattern
+
+## Action
+
+Add corresponding tests for the feature after implementation
+
+## Evidence
+
+- feature-development workflow: Add feature implementation → Add tests for feature
+- Seen in commit sequence for feature-chat
+
+---
+id: aiope-instinct-commit-prefix
+trigger: "When writing a commit message"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: xTheDevilRazedMe/aiope
+---
+
+# Aiope Instinct Commit Prefix
+
+## Action
+
+Start the commit message with a lowercase prefix indicating the type (e.g., build, fix, ci) followed by a colon
+
+## Evidence
+
+- Pattern in commits.prefixes: build, fix, ci
+- Seen in commit: build(deps): bump io.coil-kt:coil-svg from 2.6.0 to 2.7.0
+
+---
+id: aiope-instinct-commit-length
+trigger: "When composing a commit message"
+confidence: 0.7
+domain: git
+source: repo-analysis
+source_repo: xTheDevilRazedMe/aiope
+---
+
+# Aiope Instinct Commit Length
+
+## Action
+
+Keep the commit message concise, around 68 characters on average
+
+## Evidence
+
+- Pattern in commits.averageLength: 68
+
+---
+id: aiope-instinct-dependabot-update
+trigger: "When a new version of a dependency is released and Dependabot creates a PR"
+confidence: 0.99
+domain: workflow
+source: repo-analysis
+source_repo: xTheDevilRazedMe/aiope
+---
+
+# Aiope Instinct Dependabot Update
+
+## Action
+
+Update the relevant build file(s) or versions catalog and merge the PR
+
+## Evidence
+
+- Workflow: dependency-update-with-dependabot
+- Seen in commits: build(deps): bump ...
+
+---
+id: aiope-instinct-ci-workflow-update
+trigger: "When CI/CD pipeline needs to be fixed, updated, or made more robust"
+confidence: 0.95
+domain: workflow
+source: repo-analysis
+source_repo: xTheDevilRazedMe/aiope
+---
+
+# Aiope Instinct Ci Workflow Update
+
+## Action
+
+Edit workflow YAML file(s) under .github/workflows/, commit changes referencing CI or workflow update, and push to trigger new workflow behavior
+
+## Evidence
+
+- Workflow: ci-workflow-update
+- Seen in commit: ci: make release workflow robust to missing keystore, set VERSION, and trigger on push
+
