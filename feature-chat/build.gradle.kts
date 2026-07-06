@@ -35,13 +35,13 @@ dependencies {
   implementation(":markwon-syntax-highlight@aar")
   implementation(":fluid-markdown@aar")
   implementation(":universal-markdown-compose@aar")
-  implementation("com.atlassian.commonmark:commonmark:0.15.2")
-  implementation("com.atlassian.commonmark:commonmark-ext-gfm-tables:0.15.2")
+  implementation("com.atlassian.commonmark:commonmark:0.17.0")
+  implementation("com.atlassian.commonmark:commonmark-ext-gfm-tables:0.17.0")
   implementation("com.vdurmont:emoji-java:5.1.1")
   implementation("androidx.recyclerview:recyclerview:1.4.0")
   implementation(libs.androidx.appcompat)
-  implementation("io.coil-kt:coil-compose:2.6.0")
-  implementation("io.coil-kt:coil-svg:2.6.0")
+  implementation("io.coil-kt:coil-compose:2.7.0")
+  implementation("io.coil-kt:coil-svg:2.7.0")
   implementation("ru.noties:jlatexmath-android:0.2.0")
   implementation("ru.noties:jlatexmath-android-font-cyrillic:0.2.0")
   implementation("ru.noties:jlatexmath-android-font-greek:0.2.0")
@@ -72,7 +72,7 @@ dependencies {
   }
 
   // datastore
-  implementation("androidx.datastore:datastore-preferences:1.1.7")
+  implementation("androidx.datastore:datastore-preferences:1.2.1")
 
   // exoplayer for video backgrounds
   implementation("androidx.media3:media3-exoplayer:1.6.1")

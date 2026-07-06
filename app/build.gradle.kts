@@ -66,8 +66,8 @@ dependencies {
 
   // feature modules
   implementation(project(":feature-chat"))
-  implementation("io.coil-kt:coil:2.6.0")
-  implementation("io.coil-kt:coil-svg:2.6.0")
+  implementation("io.coil-kt:coil:2.7.0")
+  implementation("io.coil-kt:coil-svg:2.7.0")
   implementation(project(":feature-remote"))
 
   // compose
@@ -83,5 +83,5 @@ dependencies {
   implementation(libs.hilt.android)
   implementation(libs.androidx.hilt.navigation.compose)
   ksp(libs.hilt.compiler)
-  implementation("com.google.errorprone:error_prone_annotations:2.28.0")
+  implementation("com.google.errorprone:error_prone_annotations:2.50.0")
 }
